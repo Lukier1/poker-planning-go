@@ -1,0 +1,39 @@
+Utworzyc pokój. 
+
+Dołaczenie do pokoju(wpisanie nazwy)
+Utrzymanie połączenia 
+Odłączenie
+
+Czyścić wszystkim 
+Ukrywać/Odsłaniać
+Ustawiania głosu. 
+POST /rooms/ +
+
+PUT /rooms/{roomId} +
+
+POST /rooms/{roomId}/users/{userId}/heartbeat +
+
+POST /rooms/{roomId}/users +
+DELETE /rooms/{roomId}/users/{userId} +
+
+POST(+), DELETE /rooms/{roomId}/users/{userId}/votes
+
+GET, POST, DELETE /rooms/{roomId}/votes
+
+User: {
+ id, room, vote, name, sessionStartTime,
+}
+
+room: {
+	id: '',
+	hiddenVotes: true|false,
+	users: [ {
+		id: '',
+		name: '',
+		lifeTimeEnd: '',
+		vote: {
+			value?: ''
+		}
+	}
+	]
+}

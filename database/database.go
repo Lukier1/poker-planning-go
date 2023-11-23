@@ -42,6 +42,14 @@ func (d *DatabaseLite) Query(c *gin.Context, query string, args string) (*sql.Ro
 	return d.client.QueryContext(c, query, args)
 }
 
+func (d *DatabaseLite) Exec(c *gin.Context, query string, args string) (sql.Result, error) {
+	return d.client.ExecContext(c, query, args)
+}
+
+func (d *DatabaseLite) BeginTx(c *gin.Context) (*sql.Tx, error) {
+	return d.client.BeginTx(c, nil)
+}
+
 func (d *DatabaseLite) CloseClient() error {
 	return d.client.Close()
 }

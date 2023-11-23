@@ -5,6 +5,7 @@ import (
 	"kowaluk/go-scrum-poker/database"
 	"kowaluk/go-scrum-poker/model"
 	"kowaluk/go-scrum-poker/repository"
+	"log"
 	"net/http"
 	"time"
 
@@ -34,6 +35,11 @@ func (controller *RoomController) PostUser(c *gin.Context) {
 	// userId := c.Params.ByName("userId")
 
 	room, err := controller.repo.FindRoom(c, roomId)
+	if room == nil {
+		c.AbortWithStatus(404)
+		return
+	}
+
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -99,7 +105,9 @@ func (controller *RoomController) PostRoom(c *gin.Context) {
 func (controller *RoomController) GetRoom(c *gin.Context) {
 	id := c.Params.ByName("roomId")
 	result, err := controller.repo.FindRoom(c, id)
-	if err == nil {
+	if result == nil {
+		c.AbortWithStatus(404)
+	} else if err == nil {
 		c.IndentedJSON(http.StatusOK, result)
 	} else if err == mongo.ErrNoDocuments {
 		c.IndentedJSON(http.StatusNotFound, nil)
@@ -126,7 +134,10 @@ func (controller *RoomController) PostHearbeat(c *gin.Context) {
 			room.Users[ind].LifeTimeEnd = LifetimeFromNow()
 		}
 	}
-	controller.repo.StoreRoom(c, room)
+	if err := controller.repo.StoreRoom(c, room); err != nil {
+		c.Status(500)
+		log.Fatal(err)
+	}
 }
 
 func getRoomAndUserId(c *gin.Context) (string, string, bool) {

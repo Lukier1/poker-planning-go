@@ -13,11 +13,17 @@ import (
 
 type RoomRepository interface {
 	FindRoom(c *gin.Context, id string) (*model.Room, error)
-	StoreRoom(c *gin.Context, room *model.Room)
+	StoreRoom(c *gin.Context, room *model.Room) error
 }
 
 type RoomRepositoryMongo struct {
 	db *database.Database
+}
+
+type NotFound string
+
+func (f NotFound) Error() string {
+	return fmt.Sprintf("Not found id: %s", string(f))
 }
 
 func Create(db *database.Database) RoomRepository {
@@ -42,11 +48,12 @@ func (repo *RoomRepositoryMongo) FindRoom(c *gin.Context, id string) (*model.Roo
 	return result, err
 }
 
-func (repo *RoomRepositoryMongo) StoreRoom(c *gin.Context, room *model.Room) {
+func (repo *RoomRepositoryMongo) StoreRoom(c *gin.Context, room *model.Room) error {
 	filter := filterById(room.Id)
 	coll := repo.collection()
 	coll.DeleteOne(c, filter)
 	coll.InsertOne(c, room)
+	return nil
 }
 
 type RoomRepositorySql struct {
@@ -66,7 +73,7 @@ func (repo *RoomRepositorySql) FindRoom(c *gin.Context, id string) (*model.Room,
 
 	if err := row.Scan(&room.Id, &room.HiddenVotes); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("roomById %s: no such room", id)
+			return nil, nil
 		}
 		return nil, fmt.Errorf("roomById %s: %v", id, err)
 	}
@@ -74,17 +81,36 @@ func (repo *RoomRepositorySql) FindRoom(c *gin.Context, id string) (*model.Room,
 	return &room, nil
 }
 
-func (repo *RoomRepositorySql) StoreRoom(c *gin.Context, room *model.Room) {
-
-}
-
-func (repo *RoomRepositorySql) findUsers(c *gin.Context, roomId string) (model.User[], error){
-	rows, err := repo.db.Query(c, "SELECT id, name, life_time_end, vote FROM user WHERE poker_room_id = ?", roomId)
+func (repo *RoomRepositorySql) StoreRoom(c *gin.Context, room *model.Room) error {
+	tx, err := repo.db.BeginTx(c)
 	if err != nil {
-			
+		return err
 	}
-	defer rows.Close()
-	for rows.Scan()() {
 
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(c, "insert into poker_room(id, values_hidden) values(?, ?)", room.Id, room.HiddenVotes); err != nil {
+		return err
 	}
+
+	for _, user := range room.Users {
+		if _, err := tx.ExecContext(c, "insert into user(id, poker_room_id, name, life_time_end, vote) values(?, ?, ?, ?, ?)", user.Id, room.Id, user.Name, user.LifeTimeEnd, user.Vote); err != nil {
+			return err
+		}
+	}
+
+	err = tx.Commit()
+
+	return err
 }
+
+// func (repo *RoomRepositorySql) findUsers(c *gin.Context, roomId string) (model.User, error){
+// 	rows, err := repo.db.Query(c, "SELECT id, name, life_time_end, vote FROM user WHERE poker_room_id = ?", roomId)
+// 	if err != nil {
+
+// 	}
+// 	defer rows.Close()
+// 	for rows.Scan()() {
+
+// 	}
+// }

@@ -78,6 +78,21 @@ func (repo *RoomRepositorySql) FindRoom(c *gin.Context, id string) (*model.Room,
 		return nil, fmt.Errorf("roomById %s: %v", id, err)
 	}
 
+	userRows, err := repo.db.Query(c, "select id, life_time_end, name, vote from user where poker_room_id=?", id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for userRows.Next() {
+		var user model.User
+		userRows.Scan(&user.Id, &user.LifeTimeEnd, &user.Name, &user.Vote)
+		room.Users = append(room.Users, user)
+		fmt.Println(user.Name)
+	}
+
+	userRows.Close()
+
 	return &room, nil
 }
 

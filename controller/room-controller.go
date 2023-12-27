@@ -59,8 +59,11 @@ func (controller *RoomController) PostUser(c *gin.Context) {
 	newUser.Vote = "0"
 	newUser.Id = uuid.NewString()
 	room.Users = append(room.Users, newUser)
+	if err := controller.repo.StoreRoom(c, room); err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
 	c.IndentedJSON(http.StatusCreated, newUser)
-	controller.repo.StoreRoom(c, room)
 }
 
 func (controller *RoomController) DeleteUser(c *gin.Context) {
